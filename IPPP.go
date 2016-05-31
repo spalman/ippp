@@ -10,6 +10,7 @@ import (
 
 var MI [50]TModuleInterface //массив  описаний интерфейсов модулей
 var RP [50]TRPObject        //массив элементов рабочей памяти пакета
+var stack Stack
 
 // атрибут ПО (элемент рабочей памяти)
 type TRPObject struct {
@@ -26,6 +27,15 @@ type TModuleInterface struct {
 	moduleInputParam  string // номера входных параметров
 }
 
+func returnIndexInRP(s string) string {
+	//fmt.Printf("s:%s l:%d", s, len(s))
+	for i := range RP {
+		if RP[i].ident == s {
+			return strconv.Itoa(i)
+		}
+	}
+	return ""
+}
 func parseTxt(fileName string) {
 	file, _ := os.Open(fileName)
 
@@ -36,23 +46,97 @@ func parseTxt(fileName string) {
 	for scanner.Scan() {
 		if scanner.Text() != "#2" {
 			temp := strings.Split(scanner.Text(), ":")
-			i, _ := strconv.Atoi(temp[0])
-			baseTerms[i] = TRPObject{ident: temp[1], name: temp[2], isCalc: false}
+			//Test things
+			fmt.Printf("Temp:%s\n", temp)
+			//(remove later)
+			i, _ := strconv.Atoi(strings.Trim(temp[0], " "))
+			RP[i] = TRPObject{ident: strings.Trim(temp[1], " "), name: strings.Trim(temp[2], " "), isCalc: false}
+			//fmt.Printf("i:%d ident:%s, len:%d\n", i, RP[i].ident, len(RP[i].ident))
 		} else {
 			break
 		}
 	}
 	for scanner.Scan() {
+		tempObj := TModuleInterface{moduleIdent: "", moduleName: "", moduleOutputParam: "", moduleInputParam: ""}
 		temp := strings.Split(scanner.Text(), ":")
-
-	}
-	/*
-		for scanner.Scan() {
-			temp := strings.Split(scanner.Text(), ":")
-			i, _ := strconv.Atoi(temp[0])
-			j, _ := strconv.Atoi(temp[1])
-			k, _ := strconv.Atoi(temp[2])
-			adjacencyMatrix[i][k] = j
+		tempObj.moduleName = temp[1]
+		//Test things
+		//fmt.Printf("Temp:%s\n", temp)
+		//(remove later)
+		temp = strings.Split(temp[0], "=")
+		//fmt.Printf("t0= %s", returnIndexInRP(temp[0]))
+		tempObj.moduleOutputParam = returnIndexInRP(temp[0])
+		//fmt.Printf("OUT:%s ", tempObj.moduleOutputParam)
+		temp = strings.Split(temp[1], "(")
+		tempObj.moduleIdent = temp[0]
+		temp = strings.Split(temp[1], ",")
+		temp[len(temp)-1] = temp[len(temp)-1][:len(temp[len(temp)-1])-2]
+		for i := range temp {
+			tempObj.moduleInputParam += returnIndexInRP(temp[i])
 		}
-	*/
+		index, _ := strconv.Atoi(tempObj.moduleIdent[1:])
+		MI[index] = tempObj
+	}
+
+}
+
+type Stack struct {
+	top  *Element
+	size int
+}
+
+type Element struct {
+	value interface{} // All types satisfy the empty interface, so we can store anything here.
+	next  *Element
+}
+
+// Return the stack's length
+func (s *Stack) Len() int {
+	return s.size
+}
+
+// Push a new element onto the stack
+func (s *Stack) Push(value interface{}) {
+	s.top = &Element{value, s.top}
+	s.size++
+}
+
+// Remove the top element from the stack and return it's value
+// If the stack is empty, return nil
+func (s *Stack) Pop() (value interface{}) {
+	if s.size > 0 {
+		value, s.top = s.top.value, s.top.next
+		s.size--
+		return
+	}
+	return nil
+}
+
+func Solver(s int) {
+	if RP[s].isCalc {
+		return
+	}
+	for i := range MI {
+		outParam, _ := strconv.Atoi(MI[i].moduleOutputParam)
+		if outParam == s {
+			stack.Push(MI[i].moduleIdent)
+			for j := 0; j < len(MI[i].moduleInputParam); j++ {
+				index, _ := strconv.Atoi(string(MI[i].moduleInputParam[j]))
+				if !RP[index].isCalc {
+					Solver(index)
+				}
+			}
+		}
+	}
+
+}
+
+func main() {
+	parseTxt("1.txt")
+	Solver(5)
+	for stack.Len() > 0 {
+		// We have to do a type assertion because we get back a variable of type
+		// interface{} while the underlying type is a string.
+		fmt.Printf("%s ", stack.Pop().(string))
+	}
 }
