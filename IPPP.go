@@ -59,7 +59,7 @@ func parseTxt(fileName string) {
 	for scanner.Scan() {
 		tempObj := TModuleInterface{moduleIdent: "", moduleName: "", moduleOutputParam: "", moduleInputParam: ""}
 		temp := strings.Split(scanner.Text(), ":")
-		tempObj.moduleName = temp[1]
+		tempObj.moduleName = strings.Trim(temp[1], " ")
 		//Test things
 		//fmt.Printf("Temp:%s\n", temp)
 		//(remove later)
@@ -68,7 +68,7 @@ func parseTxt(fileName string) {
 		tempObj.moduleOutputParam = returnIndexInRP(temp[0])
 		//fmt.Printf("OUT:%s ", tempObj.moduleOutputParam)
 		temp = strings.Split(temp[1], "(")
-		tempObj.moduleIdent = temp[0]
+		tempObj.moduleIdent = strings.Trim(temp[0], " ")
 		temp = strings.Split(temp[1], ",")
 		temp[len(temp)-1] = temp[len(temp)-1][:len(temp[len(temp)-1])-2]
 		for i := range temp {
@@ -119,13 +119,17 @@ func Solver(s int) {
 	for i := range MI {
 		outParam, _ := strconv.Atoi(MI[i].moduleOutputParam)
 		if outParam == s {
+
 			stack.Push(MI[i].moduleIdent)
+			fmt.Printf("%s\n", MI[i].moduleIdent)
 			for j := 0; j < len(MI[i].moduleInputParam); j++ {
 				index, _ := strconv.Atoi(string(MI[i].moduleInputParam[j]))
 				if !RP[index].isCalc {
 					Solver(index)
 				}
 			}
+			RP[s].isCalc = true
+			return
 		}
 	}
 
@@ -133,7 +137,16 @@ func Solver(s int) {
 
 func main() {
 	parseTxt("1.txt")
-	Solver(5)
+	for i := range RP {
+		fmt.Printf("%+v\n", RP[i])
+	}
+	for i := range MI {
+		fmt.Printf("%+v\n", MI[i])
+	}
+	RP[9].isCalc = true
+	RP[2].isCalc = true
+	RP[4].isCalc = true
+	Solver(8)
 	for stack.Len() > 0 {
 		// We have to do a type assertion because we get back a variable of type
 		// interface{} while the underlying type is a string.
