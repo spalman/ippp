@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"math"
 	"os"
 	"strconv"
 	"strings"
@@ -16,7 +17,7 @@ var stack Stack
 type TRPObject struct {
 	ident  string  // условный идентификатор атрибута в рамках МПО
 	name   string  // реальное название атрибута ПО
-	value  float32 // значение  атрибута ПО
+	value  float64 // значение  атрибута ПО
 	isCalc bool    // признак: вычислен или нет
 }
 
@@ -47,7 +48,7 @@ func parseTxt(fileName string) {
 		if scanner.Text() != "#2" {
 			temp := strings.Split(scanner.Text(), ":")
 			//Test things
-			fmt.Printf("Temp:%s\n", temp)
+			//fmt.Printf("Temp:%s\n", temp)
 			//(remove later)
 			i, _ := strconv.Atoi(strings.Trim(temp[0], " "))
 			RP[i] = TRPObject{ident: strings.Trim(temp[1], " "), name: strings.Trim(temp[2], " "), isCalc: false}
@@ -131,22 +132,83 @@ func Solver(s int) {
 			RP[s].isCalc = true
 			return
 		}
+
 	}
 
+}
+func parseRequest(fileName string) int {
+	file, _ := os.Open(fileName)
+
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		if scanner.Text() != "?" {
+			s := strings.Split(scanner.Text(), "=")
+			//fmt.Printf("%s", s)
+			for i := range RP {
+				if RP[i].ident == s[0] {
+					value, _ := strconv.ParseFloat(s[1], 64)
+					RP[i].value = value
+					RP[i].isCalc = true
+				}
+			}
+		} else {
+			break
+		}
+	}
+	scanner.Scan()
+	rez, _ := strconv.Atoi(returnIndexInRP(scanner.Text()))
+	//fmt.Printf("%d", rez)
+	return rez
+}
+func F1() {
+	ai, _ := strconv.Atoi(returnIndexInRP("a"))
+	Si, _ := strconv.Atoi(returnIndexInRP("S"))
+	Hai, _ := strconv.Atoi(returnIndexInRP("Ha"))
+	RP[Si].value = RP[ai].value * RP[Hai].value
+
+}
+func F2() {
+	ai, _ := strconv.Atoi(returnIndexInRP("a"))
+	Si, _ := strconv.Atoi(returnIndexInRP("S"))
+	Hai, _ := strconv.Atoi(returnIndexInRP("Ha"))
+	RP[ai].value = RP[Si].value / RP[Hai].value
+
+}
+func F3() {
+	ai, _ := strconv.Atoi(returnIndexInRP("a"))
+	Si, _ := strconv.Atoi(returnIndexInRP("S"))
+	alphai, _ := strconv.Atoi(returnIndexInRP("alpha"))
+	RP[ai].value = math.Sqrt(RP[Si].value) / math.Sqrt(math.Sin(RP[alphai].value))
+}
+func F4() {
+	ai, _ := strconv.Atoi(returnIndexInRP("a"))
+	Si, _ := strconv.Atoi(returnIndexInRP("S"))
+	betai, _ := strconv.Atoi(returnIndexInRP("beta"))
+	RP[ai].value = math.Sqrt(RP[Si].value) / math.Sqrt(math.Sin(RP[betai].value))
+}
+func F5() {
+	d1i, _ := strconv.Atoi(returnIndexInRP("d1"))
+	d2i, _ := strconv.Atoi(returnIndexInRP("d2"))
+	ai, _ := strconv.Atoi(returnIndexInRP("ai"))
+	RP[ai].value = math.Sqrt(RP[d1i].value*RP[d1i].value+RP[d2i].value*RP[d2i].value) / 2
 }
 
 func main() {
 	parseTxt("1.txt")
-	for i := range RP {
-		fmt.Printf("%+v\n", RP[i])
-	}
-	for i := range MI {
-		fmt.Printf("%+v\n", MI[i])
-	}
-	RP[9].isCalc = true
-	RP[2].isCalc = true
-	RP[4].isCalc = true
-	Solver(8)
+
+	Solver(parseRequest("input.txt"))
+	//	for i := range RP {
+	//		fmt.Printf("%+v\n", RP[i])
+	//	}
+	//	for i := range MI {
+	//		fmt.Printf("%+v\n", MI[i])
+	//	}
+	//	RP[9].isCalc = true
+	//	RP[2].isCalc = true
+	//	RP[4].isCalc = true
+	//	Solver(8)
 	for stack.Len() > 0 {
 		// We have to do a type assertion because we get back a variable of type
 		// interface{} while the underlying type is a string.
