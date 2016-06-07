@@ -217,6 +217,6 @@ func calcRes() {
 }
 
 func main() {
-	parseTxt("1.txt")
-	fmt.Printf("%f", parseRequest("input.txt"))
+	parseTxt("data/1.txt")
+	fmt.Printf("%f", parseRequest("data/input.txt"))
 }
