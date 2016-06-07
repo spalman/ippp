@@ -3,7 +3,6 @@ package main
 import (
 	"bufio"
 	"fmt"
-	"math"
 	"os"
 	"strconv"
 	"strings"
@@ -12,6 +11,7 @@ import (
 var MI [50]TModuleInterface //массив  описаний интерфейсов модулей
 var RP [50]TRPObject        //массив элементов рабочей памяти пакета
 var stack Stack
+var checkingArray [10]int
 
 // атрибут ПО (элемент рабочей памяти)
 type TRPObject struct {
@@ -37,6 +37,27 @@ func returnIndexInRP(s string) string {
 	}
 	return ""
 }
+func contains(e int) bool {
+	for _, a := range checkingArray {
+		if a == e {
+			return true
+		}
+	}
+	return false
+}
+func arrayPush(e int) {
+	for i := range checkingArray {
+		if checkingArray[i] == -1 {
+			checkingArray[i] = e
+			return
+		}
+	}
+}
+func clearArr() {
+	for i := range checkingArray {
+		checkingArray[i] = -1
+	}
+}
 func parseTxt(fileName string) {
 	file, _ := os.Open(fileName)
 
@@ -47,12 +68,8 @@ func parseTxt(fileName string) {
 	for scanner.Scan() {
 		if scanner.Text() != "#2" {
 			temp := strings.Split(scanner.Text(), ":")
-			//Test things
-			//fmt.Printf("Temp:%s\n", temp)
-			//(remove later)
 			i, _ := strconv.Atoi(strings.Trim(temp[0], " "))
 			RP[i] = TRPObject{ident: strings.Trim(temp[1], " "), name: strings.Trim(temp[2], " "), isCalc: false}
-			//fmt.Printf("i:%d ident:%s, len:%d\n", i, RP[i].ident, len(RP[i].ident))
 		} else {
 			break
 		}
@@ -61,13 +78,8 @@ func parseTxt(fileName string) {
 		tempObj := TModuleInterface{moduleIdent: "", moduleName: "", moduleOutputParam: "", moduleInputParam: ""}
 		temp := strings.Split(scanner.Text(), ":")
 		tempObj.moduleName = strings.Trim(temp[1], " ")
-		//Test things
-		//fmt.Printf("Temp:%s\n", temp)
-		//(remove later)
 		temp = strings.Split(temp[0], "=")
-		//fmt.Printf("t0= %s", returnIndexInRP(temp[0]))
 		tempObj.moduleOutputParam = returnIndexInRP(temp[0])
-		//fmt.Printf("OUT:%s ", tempObj.moduleOutputParam)
 		temp = strings.Split(temp[1], "(")
 		tempObj.moduleIdent = strings.Trim(temp[0], " ")
 		temp = strings.Split(temp[1], ",")
@@ -81,53 +93,52 @@ func parseTxt(fileName string) {
 
 }
 
-type Stack struct {
-	top  *Element
-	size int
-}
-
-type Element struct {
-	value interface{} // All types satisfy the empty interface, so we can store anything here.
-	next  *Element
-}
-
-// Return the stack's length
-func (s *Stack) Len() int {
-	return s.size
-}
-
-// Push a new element onto the stack
-func (s *Stack) Push(value interface{}) {
-	s.top = &Element{value, s.top}
-	s.size++
-}
-
-// Remove the top element from the stack and return it's value
-// If the stack is empty, return nil
-func (s *Stack) Pop() (value interface{}) {
-	if s.size > 0 {
-		value, s.top = s.top.value, s.top.next
-		s.size--
-		return
-	}
-	return nil
-}
-
 func Solver(s int) {
+	cont := false
+
 	if RP[s].isCalc {
 		return
 	}
 	for i := range MI {
+		cont = false
 		outParam, _ := strconv.Atoi(MI[i].moduleOutputParam)
+		if outParam == s {
+			for j := 0; j < len(MI[i].moduleInputParam); j++ {
+				index, _ := strconv.Atoi(string(MI[i].moduleInputParam[j]))
+				if !RP[index].isCalc {
+					cont = true
+					break
+				}
+			}
+			if !cont {
+				RP[s].isCalc = true
+				stack.Push(MI[i].moduleIdent)
+				return
+			}
+		}
+
+	}
+	for i := range MI {
+		outParam, _ := strconv.Atoi(MI[i].moduleOutputParam)
+		arrayPush(s)
 		if outParam == s {
 
 			stack.Push(MI[i].moduleIdent)
 			fmt.Printf("%s\n", MI[i].moduleIdent)
 			for j := 0; j < len(MI[i].moduleInputParam); j++ {
 				index, _ := strconv.Atoi(string(MI[i].moduleInputParam[j]))
+				if contains(index) {
+					stack.Pop()
+					cont = true
+					break
+				}
 				if !RP[index].isCalc {
+					cont = false
 					Solver(index)
 				}
+			}
+			if cont {
+				continue
 			}
 			RP[s].isCalc = true
 			return
@@ -136,16 +147,15 @@ func Solver(s int) {
 	}
 
 }
-func parseRequest(fileName string) int {
+func parseRequest(fileName string) float64 {
 	file, _ := os.Open(fileName)
 
 	defer file.Close()
-
+	clearArr()
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 		if scanner.Text() != "?" {
 			s := strings.Split(scanner.Text(), "=")
-			//fmt.Printf("%s", s)
 			for i := range RP {
 				if RP[i].ident == s[0] {
 					value, _ := strconv.ParseFloat(s[1], 64)
@@ -159,59 +169,54 @@ func parseRequest(fileName string) int {
 	}
 	scanner.Scan()
 	rez, _ := strconv.Atoi(returnIndexInRP(scanner.Text()))
-	//fmt.Printf("%d", rez)
-	return rez
+	Solver(rez)
+	calcRes()
+	return RP[rez].value
 }
-func F1() {
-	ai, _ := strconv.Atoi(returnIndexInRP("a"))
-	Si, _ := strconv.Atoi(returnIndexInRP("S"))
-	Hai, _ := strconv.Atoi(returnIndexInRP("Ha"))
-	RP[Si].value = RP[ai].value * RP[Hai].value
-
-}
-func F2() {
-	ai, _ := strconv.Atoi(returnIndexInRP("a"))
-	Si, _ := strconv.Atoi(returnIndexInRP("S"))
-	Hai, _ := strconv.Atoi(returnIndexInRP("Ha"))
-	RP[ai].value = RP[Si].value / RP[Hai].value
-
-}
-func F3() {
-	ai, _ := strconv.Atoi(returnIndexInRP("a"))
-	Si, _ := strconv.Atoi(returnIndexInRP("S"))
-	alphai, _ := strconv.Atoi(returnIndexInRP("alpha"))
-	RP[ai].value = math.Sqrt(RP[Si].value) / math.Sqrt(math.Sin(RP[alphai].value))
-}
-func F4() {
-	ai, _ := strconv.Atoi(returnIndexInRP("a"))
-	Si, _ := strconv.Atoi(returnIndexInRP("S"))
-	betai, _ := strconv.Atoi(returnIndexInRP("beta"))
-	RP[ai].value = math.Sqrt(RP[Si].value) / math.Sqrt(math.Sin(RP[betai].value))
-}
-func F5() {
-	d1i, _ := strconv.Atoi(returnIndexInRP("d1"))
-	d2i, _ := strconv.Atoi(returnIndexInRP("d2"))
-	ai, _ := strconv.Atoi(returnIndexInRP("ai"))
-	RP[ai].value = math.Sqrt(RP[d1i].value*RP[d1i].value+RP[d2i].value*RP[d2i].value) / 2
+func calcRes() {
+	for stack.Len() > 0 {
+		switch stack.Pop() {
+		case "F1":
+			fmt.Printf("F1: %s\n", MI[1].moduleName)
+			F1()
+		case "F2":
+			fmt.Printf("F2: %s\n", MI[2].moduleName)
+			F2()
+		case "F3":
+			fmt.Printf("F3: %s\n", MI[3].moduleName)
+			F3()
+		case "F4":
+			fmt.Printf("F4: %s\n", MI[4].moduleName)
+			F4()
+		case "F5":
+			fmt.Printf("F5: %s\n", MI[5].moduleName)
+			F5()
+		case "F6":
+			fmt.Printf("F6: %s\n", MI[6].moduleName)
+			F7()
+		case "F7":
+			fmt.Printf("F7: %s\n", MI[7].moduleName)
+			F7()
+		case "F8":
+			fmt.Printf("F8: %s\n", MI[8].moduleName)
+			F8()
+		case "F9":
+			fmt.Printf("F9: %s\n", MI[9].moduleName)
+			F9()
+		case "F10":
+			fmt.Printf("F10: %s\n", MI[10].moduleName)
+			F10()
+		case "F11":
+			fmt.Printf("F11: %s\n", MI[11].moduleName)
+			F11()
+		case "F12":
+			fmt.Printf("F12: %s\n", MI[12].moduleName)
+			F12()
+		}
+	}
 }
 
 func main() {
 	parseTxt("1.txt")
-
-	Solver(parseRequest("input.txt"))
-	//	for i := range RP {
-	//		fmt.Printf("%+v\n", RP[i])
-	//	}
-	//	for i := range MI {
-	//		fmt.Printf("%+v\n", MI[i])
-	//	}
-	//	RP[9].isCalc = true
-	//	RP[2].isCalc = true
-	//	RP[4].isCalc = true
-	//	Solver(8)
-	for stack.Len() > 0 {
-		// We have to do a type assertion because we get back a variable of type
-		// interface{} while the underlying type is a string.
-		fmt.Printf("%s ", stack.Pop().(string))
-	}
+	fmt.Printf("%f", parseRequest("input.txt"))
 }
